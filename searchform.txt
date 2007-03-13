@@ -1,0 +1,30 @@
+<form method="post">
+<label for="date_from">From:</label>
+<input type="text" name="date_from" id="date_from" /><br />
+<label for="date_to">To:</label>
+<input type="text" name="date_to" id="date_to" /><br />
+<label for="q">Search:</label>
+<input type="text" name="q" id="q" /><br />
+
+<fieldset id="category">
+<legend>Category:</legend>
+<input type="checkbox" name="all_categories" value="1" /><label for="all_categories">All Categories</label><br />
+
+<input type="checkbox" name="c[cat1]" value="cat1" /><label for="c[cat1]">Cat 1</label><br />
+<input type="checkbox" name="c[cat2]" value="cat2" /><label for="c[cat2]">Cat 2</label><br />
+<input type="checkbox" name="c[cat3]" value="cat3" /><label for="c[cat3]">Cat 3</label><br />
+</fieldset>
+
+<fieldset id="location">
+<legend>Location:</legend>
+<input type="checkbox" name="all_locations" value="1" /><label for="all_locations">All Locations</label><br />
+
+<input type="checkbox" name="location[loc1]" value="loc1" /><label for="location[loc1]">Loc 1</label><br />
+<input type="checkbox" name="location[loc2]" value="loc2" /><label for="location[loc2]">Loc 2</label><br />
+<input type="checkbox" name="location[loc3]" value="loc3" /><label for="location[loc3]">Loc 3</label><br />
+</fieldset>
+
+
+<input type="submit" name="search" value="Search" />
+
+</form>
