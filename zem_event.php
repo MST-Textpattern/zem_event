@@ -886,17 +886,6 @@ function zem_event_calendar_nav($atts) {
 	$prev_m = strftime('%Y-%m', strtotime('-1 month', mktime(0,0,0,$m,1,$y)));
 	$next_m = strftime('%Y-%m', strtotime('+1 month', mktime(0,0,0,$m,1,$y)));
 
-	# next link
-	$out[] = '<a rel="next" class="'.$nextclass.'" href="'.pagelinkurl(array(
-		'date' => $next_m,
-		's'    =>@$pretext['s'],
-		'c'    =>@$pretext['c'],
-		'q'    =>@$pretext['q'],
-	)).'">'.$next.'</a>';
-
-	# month name
-	$out[] = doTag(strftime('%B', mktime(0,0,0,$m,1,$y)), $labeltag, $class);
-
 	# prev link
 	$out[] = '<a rel="prev" class="'.$prevclass.'" href="'.pagelinkurl(array(
 		'date' => $prev_m,
@@ -904,6 +893,18 @@ function zem_event_calendar_nav($atts) {
 		'c'    =>@$pretext['c'],
 		'q'    =>@$pretext['q'],
 	)).'">'.$prev.'</a>';
+
+	# month name
+	$out[] = doTag(strftime('%B', mktime(0,0,0,$m,1,$y)), $labeltag, $class);
+
+	# next link
+	$out[] = '<a rel="next" class="'.$nextclass.'" href="'.pagelinkurl(array(
+		'date' => $next_m,
+		's'    =>@$pretext['s'],
+		'c'    =>@$pretext['c'],
+		'q'    =>@$pretext['q'],
+	)).'">'.$next.'</a>';
+	
 
 	return doWrap($out, $wraptag, $break, $class);
 }
