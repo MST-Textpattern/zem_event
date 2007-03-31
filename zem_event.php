@@ -41,6 +41,7 @@ function zem_event_install() {
 <txp:zem_event_permlink wraptag="" ><txp:zem_event_name label="Event" wraptag="" /></txp:zem_event_permlink>
 <txp:zem_event_date label="Date" wraptag="" />
 <txp:zem_event_time label="Time" wraptag="" />
+
 EOF;
 		safe_insert('txp_form',
 			"name='zem_event_display',
@@ -55,6 +56,7 @@ EOF;
 <txp:zem_event_permlink wraptag="" ><txp:zem_event_name label="Event" wraptag="" /></txp:zem_event_permlink>
 <txp:zem_event_date label="Date" wraptag="" />
 <txp:zem_event_time label="Time" wraptag="" />
+
 EOF;
 		safe_insert('txp_form',
 			"name='zem_event_display_feed',
@@ -68,6 +70,7 @@ EOF;
 		$form = <<<EOF
 <txp:zem_event_permlink wraptag="" ><txp:zem_event_name label="Event" wraptag="" /></txp:zem_event_permlink>
 <txp:zem_event_time label="Time" wraptag="" />
+
 EOF;
 		safe_insert('txp_form',
 			"name='zem_event_cal_entry',
@@ -507,7 +510,7 @@ function zem_event_categories($atts) {
 		'field'   => 'categories',
 		'wraptag' => '',
 		'class'   => __FUNCTION__,
-		'break'   => '',
+		'break'   => n,
 		'breakclass' => '',
 		'link'    => 1,
 		'section' => @$pretext['s'],
@@ -629,6 +632,7 @@ function zem_event_list($atts, $thing=NULL) {
 		'all_categories' => gps('all_categories'),
 		'location' => gps('location'),
 		'all_locations' => gps('all_locations'),
+		'debug'    => 0,
 	),$atts));
 
 	if ($thing === NULL)
@@ -681,14 +685,14 @@ function zem_event_list($atts, $thing=NULL) {
 		if (!$cats_id)
 			$cats_id = array(0);
 		$where = "zem_event_calendar.id=zem_event_category.k1 and zem_event_category.k2 IN (".join(',', quote_list($cats_id)).") and ".$where;
-		$grand_total = safe_count('zem_event_calendar, zem_event_date, textpattern, zem_event_category', $where.' group by zem_event_calendar.id order by '.$sort);
+		$grand_total = safe_count('zem_event_calendar, zem_event_date, textpattern, zem_event_category', $where.' group by zem_event_calendar.id order by '.$sort, $debug);
 		$lim = zem_event_paginate($limit, $grand_total);
-		$rs = safe_rows_start('zem_event_calendar.*, zem_event_date.*, textpattern.*, unix_timestamp(Posted) as uPosted', 'zem_event_calendar, zem_event_date, textpattern, zem_event_category', $where.' group by zem_event_calendar.id order by '.$sort.$lim);
+		$rs = safe_rows_start('zem_event_calendar.*, zem_event_date.*, textpattern.*, unix_timestamp(Posted) as uPosted', 'zem_event_calendar, zem_event_date, textpattern, zem_event_category', $where.' group by zem_event_calendar.id order by '.$sort.$lim, $debug);
 	}
 	else {
-		$grand_total = safe_count('zem_event_calendar, zem_event_date, textpattern', $where.' order by '.$sort);
+		$grand_total = safe_count('zem_event_calendar, zem_event_date, textpattern', $where.' order by '.$sort, $debug);
 		$lim = zem_event_paginate($limit, $grand_total);
-		$rs = safe_rows_start('*, unix_timestamp(Posted) as uPosted', 'zem_event_calendar, zem_event_date, textpattern', $where.' order by '.$sort.$lim);
+		$rs = safe_rows_start('*, unix_timestamp(Posted) as uPosted', 'zem_event_calendar, zem_event_date, textpattern', $where.' order by '.$sort.$lim, $debug);
 	}
 
 	$out = array();
@@ -864,7 +868,7 @@ function zem_event_calendar_nav($atts) {
 
 	extract(lAtts(array(
 		'wraptag' => 'div',
-		'break'   => '',
+		'break'   => n,
 		'class'   => __FUNCTION__,
 		'prev'    => '&larr;',
 		'prevclass' => 'prev',
@@ -886,17 +890,6 @@ function zem_event_calendar_nav($atts) {
 	$prev_m = strftime('%Y-%m', strtotime('-1 month', mktime(0,0,0,$m,1,$y)));
 	$next_m = strftime('%Y-%m', strtotime('+1 month', mktime(0,0,0,$m,1,$y)));
 
-	# prev link
-	$out[] = '<a rel="prev" class="'.$prevclass.'" href="'.pagelinkurl(array(
-		'date' => $prev_m,
-		's'    =>@$pretext['s'],
-		'c'    =>@$pretext['c'],
-		'q'    =>@$pretext['q'],
-	)).'">'.$prev.'</a>';
-
-	# month name
-	$out[] = doTag(strftime('%B', mktime(0,0,0,$m,1,$y)), $labeltag, $class);
-
 	# next link
 	$out[] = '<a rel="next" class="'.$nextclass.'" href="'.pagelinkurl(array(
 		'date' => $next_m,
@@ -904,7 +897,17 @@ function zem_event_calendar_nav($atts) {
 		'c'    =>@$pretext['c'],
 		'q'    =>@$pretext['q'],
 	)).'">'.$next.'</a>';
-	
+
+	# month name
+	$out[] = doTag(strftime('%B', mktime(0,0,0,$m,1,$y)), $labeltag, $class);
+
+	# prev link
+	$out[] = '<a rel="prev" class="'.$prevclass.'" href="'.pagelinkurl(array(
+		'date' => $prev_m,
+		's'    =>@$pretext['s'],
+		'c'    =>@$pretext['c'],
+		'q'    =>@$pretext['q'],
+	)).'">'.$prev.'</a>';
 
 	return doWrap($out, $wraptag, $break, $class);
 }
@@ -934,6 +937,7 @@ function zem_event_mini_calendar($atts) {
 		'class_noday' => '', // spacer cells that aren't real days
 		'class_link'  => '',
 		'labeltag'    => 'h3',
+		'section'     => @$pretext['s'],
 	),$atts));
 
 	$y = ''; $m = '';
@@ -990,7 +994,7 @@ function zem_event_mini_calendar($atts) {
 				if (isset($days["$y-$m-$dayofmonth"])) {
 					$url = '<a class="'.$class_link.'" href="'.pagelinkurl(array(
 						'date' => "$y-$m-$dayofmonth",
-						's'    =>@$pretext['s'],
+						's'    =>$section,
 						'c'    =>@$pretext['c'],
 						'q'    =>@$pretext['q'],
 					)).'">'.$dayofmonth.'</a>';
@@ -1144,6 +1148,20 @@ function zem_toggle_display($id, $linktext, $body, $display=0) {
 		'<h3 class="plain"><a href="#" onclick="toggleDisplay(\''.$id.'\'); return false;">'.gTxt($linktext).'</a></h3>'.
 		'<div id="'.$id.'" style="'.$style.'">'.$body.'</div>';
 }
+
+function zem_toggle_fieldset($id, $linktext, $body, $display=0) {
+	$style = ($display ? 'display:block;' : 'display:none;');
+	$style_neg = ($display ? 'display:none;' : 'display:block;');
+	$link = '<a href="#" onclick="toggleDisplay(\''.$id.'\'); toggleDisplay(\''.$id.'_neg\'); return false;">'.gTxt($linktext).'</a>';
+
+	return
+		'<p id="'.$id.'_neg" style="'.$style_neg.'">'.$link.'</p>'.n.
+		'<fieldset id="'.$id.'" style="'.$style.'">'.n.
+		'<legend>'.$link.'</legend>'.n.
+		$body.n.
+		'</fieldset>';
+}
+
 
 function zem_event_date_format() {
 	// work out if the locale's preferred date format is m/d/y or something else
@@ -1523,7 +1541,7 @@ function zem_event_handler($event, $step) {
 
 	$article_id = gps('ID') ? gps('ID') : @$GLOBALS['ID'];
 
-	if (gps('save') or gps('publish')) {
+	if ($article_id and (gps('save') or gps('publish'))) {
 		if (ps('zem_event_date')) {
 			// insert or update
 			$time = ps('zem_event_time') ? ps('zem_event_time') : NULL;
@@ -1556,7 +1574,9 @@ function zem_event_handler($event, $step) {
 		}
 	}
 
-	$row = safe_row('*', 'zem_event_calendar', "article_id='".doSlash($article_id)."' limit 1");
+	$row = array();
+	if ($article_id)
+		$row = safe_row('*', 'zem_event_calendar', "article_id='".doSlash($article_id)."' limit 1");
 
 	if (zem_event_date_format() == 'MM/dd/yyyy')
 		$format = '%m/%d/%Y';
@@ -1602,9 +1622,8 @@ function zem_event_handler($event, $step) {
 	if (@$row['id'])
 		$dates = safe_column('event_date', 'zem_event_date', "event_id='".doSlash($row['id'])."'");
 
+
 	$form =
-		'<fieldset id="zem_event_fieldset">'.n.
-		'<legend>'.zem_event_gTxt('event_label').'</legend>'.n.
 		startTable('', '', 'zem_event', 5, '100%').
 			tr(
 				tda(
@@ -1680,10 +1699,10 @@ function zem_event_handler($event, $step) {
 				, ' colspan="2"')
 			).
 
-			endTable().n.
-		'</fieldset>'.n;
+			endTable();
 
-	$html = $form;
+	$html = zem_toggle_fieldset('zem_event_fieldset', zem_event_gTxt('event_label'), $form, !empty($row));
+
 
 	if (!is_file($path = txpath.'/js/jquery.js'))
 		trigger_error(zem_event_gTxt('missing_file', array('{path}' => $path)));
@@ -1928,7 +1947,7 @@ function zem_event_gTxt($what, $atts = array()) {
 /*
 --- PLUGIN METADATA ---
 Name: zem_event
-Version: 0.30
+Version: 0.31
 Type: 1
 Description: Event calendar
 Author: Alex Shiels
