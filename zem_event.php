@@ -21,7 +21,7 @@ define('ZEM_MAX_REPEAT_EVENTS', 100);
 
 function zem_event_install() {
 	if (!getThings("show tables like '".PFX."zem_event_calendar'"))
-		safe_query("create table ".PFX."zem_event_calendar (
+		safe_query("create table if not exists ".PFX."zem_event_calendar (
 
 			id bigint auto_increment not null primary key,
 			article_id bigint not null,
@@ -95,28 +95,28 @@ EOF;
 	// add finish date and time fields
    $cal = getThings('describe '.PFX.'zem_event_calendar');
    if (!in_array('finish_date',$cal))
-      safe_alter('zem_event_calendar', 'add finish_date date default null');
+      zem_alter('zem_event_calendar', 'add finish_date date default null');
    if (!in_array('finish_time',$cal))
-      safe_alter('zem_event_calendar', 'add finish_time time default null');
+      zem_alter('zem_event_calendar', 'add finish_time time default null');
    if (!in_array('location',$cal))
-      safe_alter('zem_event_calendar', 'add location varchar(255)');
+      zem_alter('zem_event_calendar', 'add location varchar(255)');
    if (!in_array('location_url',$cal))
-      safe_alter('zem_event_calendar', 'add location_url varchar(255)');
+      zem_alter('zem_event_calendar', 'add location_url varchar(255)');
    if (!in_array('url',$cal))
-      safe_alter('zem_event_calendar', 'add url varchar(255)');
+      zem_alter('zem_event_calendar', 'add url varchar(255)');
    if (!in_array('email',$cal))
-      safe_alter('zem_event_calendar', 'add email varchar(128)');
+      zem_alter('zem_event_calendar', 'add email varchar(128)');
    if (!in_array('description',$cal))
-      safe_alter('zem_event_calendar', 'add description text');
+      zem_alter('zem_event_calendar', 'add description text');
    if (!in_array('description_html',$cal))
-      safe_alter('zem_event_calendar', 'add description_html text');
+      zem_alter('zem_event_calendar', 'add description_html text');
 
    if (!in_array('repeat_n',$cal))
-      safe_alter('zem_event_calendar', 'add repeat_n int');
+      zem_alter('zem_event_calendar', 'add repeat_n int');
    if (!in_array('repeat_period',$cal))
-      safe_alter('zem_event_calendar', 'add repeat_period varchar(16)'); // day/week/month/year
+      zem_alter('zem_event_calendar', 'add repeat_period varchar(16)'); // day/week/month/year
    if (!in_array('repeat_to',$cal))
-      safe_alter('zem_event_calendar', 'add repeat_to date default null');
+      zem_alter('zem_event_calendar', 'add repeat_to date default null');
 
 
 	if (!safe_row('id', 'txp_category', "type = 'event' and name = 'root'")) {
@@ -125,7 +125,7 @@ EOF;
 
 	// event m->m category
 	if (!getThings("show tables like '".PFX."zem_event_category'"))
-		safe_query("create table ".PFX."zem_event_category (
+		safe_query("create table if not exists ".PFX."zem_event_category (
 				k1 int not null,
 				k2 int not null,
 				PRIMARY KEY (k1,k2)
@@ -133,7 +133,7 @@ EOF;
 		);
 
 	if (!getThings("show tables like '".PFX."zem_event_date'")) {
-		safe_query("create table ".PFX."zem_event_date (
+		safe_query("create table if not exists ".PFX."zem_event_date (
 				event_id bigint not null,
 				event_date date not null,
 				event_time time default null,
@@ -161,6 +161,11 @@ EOF;
 
 	}
 
+
+}
+
+function zem_alter($table, $thing) {
+	return safe_query('alter ignore table '.safe_pfx($table).' '.$thing);
 }
 
 function zem_strtotime($t, $now='') {
@@ -330,6 +335,8 @@ function zem_event_save($article_id, $name, $date, $time=NULL,$finish_date=NULL,
 	}
 
 	if ($result and $categories !== NULL) {
+		if (empty($categories))
+			$categories = array();
 		if (m2m_update_links('zem_event_category', $id, $categories))
 			return $id;
 		return false;
@@ -345,8 +352,6 @@ function zem_event_delete($article_id) {
 }
 
 function zem_event_date($atts) {
-	global $zem_thiseventcal;
-
 	$latts = lAtts(array(
 		'type'    => 'date',
 		'field'   => 'event_date',
@@ -355,12 +360,10 @@ function zem_event_date($atts) {
 		'class'   => __FUNCTION__,
 	),$atts, 0);
 
-	return zem_data_field($zem_thiseventcal, $latts + $atts);
+	return zem_data_field(zem_event_thisevent(), $latts + $atts);
 }
 
 function zem_event_time($atts) {
-	global $zem_thiseventcal;
-
 	$latts = lAtts(array(
 		'type'    => 'date',
 		'field'   => 'event_time',
@@ -369,12 +372,10 @@ function zem_event_time($atts) {
 		'class'   => __FUNCTION__,
 	),$atts, 0);
 
-	return zem_data_field($zem_thiseventcal, $latts + $atts);
+	return zem_data_field(zem_event_thisevent(), $latts + $atts);
 }
 
 function zem_event_name($atts) {
-	global $zem_thiseventcal;
-
 	$latts = lAtts(array(
 		'field'   => 'name',
 		'wraptag' => 'span',
@@ -382,12 +383,10 @@ function zem_event_name($atts) {
 		'default' => 'Untitled',
 	),$atts, 0);
 
-	return zem_data_field($zem_thiseventcal, $latts + $atts);
+	return zem_data_field(zem_event_thisevent(), $latts + $atts);
 }
 
 function zem_event_permlink($atts, $thing='') {
-	global $zem_thiseventcal;
-
 	$latts = lAtts(array(
 		'type'    => 'permlink',
 		'field'   => 'article_id',
@@ -399,12 +398,10 @@ function zem_event_permlink($atts, $thing='') {
 	if ($thing)
 		$latts['linktext'] = parse($thing);
 
-	return zem_data_field($zem_thiseventcal, $latts + $atts);
+	return zem_data_field(zem_event_thisevent(), $latts + $atts);
 }
 
 function zem_event_finish_date($atts) {
-	global $zem_thiseventcal;
-
 	$latts = lAtts(array(
 		'type'    => 'date',
 		'field'   => 'finish_date',
@@ -413,12 +410,10 @@ function zem_event_finish_date($atts) {
 		'class'   => __FUNCTION__,
 	),$atts, 0);
 
-	return zem_data_field($zem_thiseventcal, $latts + $atts);
+	return zem_data_field(zem_event_thisevent(), $latts + $atts);
 }
 
 function zem_event_finish_time($atts) {
-	global $zem_thiseventcal;
-
 	$latts = lAtts(array(
 		'type'    => 'date',
 		'field'   => 'finish_time',
@@ -427,24 +422,20 @@ function zem_event_finish_time($atts) {
 		'class'   => __FUNCTION__,
 	),$atts, 0);
 
-	return zem_data_field($zem_thiseventcal, $latts + $atts);
+	return zem_data_field(zem_event_thisevent(), $latts + $atts);
 }
 
 function zem_event_location($atts) {
-	global $zem_thiseventcal;
-
 	$latts = lAtts(array(
 		'field'   => 'location',
 		'wraptag' => 'span',
 		'class'   => __FUNCTION__,
 	),$atts, 0);
 
-	return zem_data_field($zem_thiseventcal, $latts + $atts);
+	return zem_data_field(zem_event_thisevent(), $latts + $atts);
 }
 
 function zem_event_url($atts, $thing='') {
-	global $zem_thiseventcal;
-
 	$latts = lAtts(array(
 		'type'    => 'link',
 		'field'   => 'url',
@@ -456,12 +447,10 @@ function zem_event_url($atts, $thing='') {
 	if ($thing)
 		$latts['linktext'] = parse($thing);
 
-	return zem_data_field($zem_thiseventcal, $latts + $atts);
+	return zem_data_field(zem_event_thisevent(), $latts + $atts);
 }
 
 function zem_event_location_url($atts, $thing='') {
-	global $zem_thiseventcal;
-
 	$latts = lAtts(array(
 		'type'    => 'link',
 		'field'   => 'location_url',
@@ -473,12 +462,10 @@ function zem_event_location_url($atts, $thing='') {
 	if ($thing)
 		$latts['linktext'] = parse($thing);
 
-	return zem_data_field($zem_thiseventcal, $latts + $atts);
+	return zem_data_field(zem_event_thisevent(), $latts + $atts);
 }
 
 function zem_event_description($atts) {
-	global $zem_thiseventcal;
-
 	$latts = lAtts(array(
 		'field'   => 'description_html',
 		'wraptag' => 'div',
@@ -486,12 +473,10 @@ function zem_event_description($atts) {
 		'class'   => __FUNCTION__,
 	),$atts, 0);
 
-	return zem_data_field($zem_thiseventcal, $latts + $atts);
+	return zem_data_field(zem_event_thisevent(), $latts + $atts);
 }
 
 function zem_event_email($atts) {
-	global $zem_thiseventcal;
-
 	$latts = lAtts(array(
 		'type'    => 'email',
 		'field'   => 'email',
@@ -499,11 +484,11 @@ function zem_event_email($atts) {
 		'class'   => __FUNCTION__,
 	),$atts, 0);
 
-	return zem_data_field($zem_thiseventcal, $latts + $atts);
+	return zem_data_field(zem_event_thisevent(), $latts + $atts);
 }
 
 function zem_event_categories($atts) {
-	global $zem_thiseventcal, $pretext;
+	global $pretext;
 
 	$latts = lAtts(array(
 		'type'    => 'email',
@@ -518,11 +503,15 @@ function zem_event_categories($atts) {
 
 	extract($latts);
 
-	if (!isset($zem_thiseventcal['categories']))
-		$zem_thiseventcal['categories'] = m2m_linked('zem_event_category', $zem_thiseventcal['id'], 'txp_category');
+	$thisevent =& zem_event_thisevent();
+	if (empty($thisevent))
+		return;
+
+	if (!isset($thisevent['categories']))
+		$thisevent['categories'] = m2m_linked('zem_event_category', $thisevent['id'], 'txp_category');
 
 	$out = array();
-	foreach ($zem_thiseventcal['categories'] as $cat) {
+	foreach ($thisevent['categories'] as $cat) {
 		if ($link)
 			$out[] = href($cat['title'], pagelinkurl(array('s'=>$section, 'c'=>$cat['name'])));
 		else
@@ -530,6 +519,16 @@ function zem_event_categories($atts) {
 	}
 
 	return doWrap($out, $wraptag, $break, $class, $breakclass);
+}
+
+function &zem_event_thisevent() {
+	global $zem_thiseventcal;
+
+	if (empty($zem_thiseventcal)) {
+		trigger_error(zem_event_gTxt('error_context', array('{thing}' => 'thisevent')));
+		return false;
+	}
+	return $zem_thiseventcal;
 }
 
 function zem_data_field(&$obj, $atts) {
@@ -550,6 +549,9 @@ function zem_data_field(&$obj, $atts) {
 	), $atts, 0));
 
 	$attr = '';
+
+	if (!$obj)
+		return;
 
 	if (!array_key_exists($field, $obj)) {
 		trigger_error(gTxt('unknown_field', array('{field}' => $field)));
@@ -874,40 +876,57 @@ function zem_event_calendar_nav($atts) {
 		'prevclass' => 'prev',
 		'next'    => '&rarr;',
 		'nextclass' => 'next',
-		'date'   => gps('date'),
+		'date'   => 'today',
+		'label'  => '%B %Y',
 		'labeltag'=> 'h3',
+		'reverse' => 0,
+		'step'    => 'month',
 	),$atts, 0));
 
-	$y = ''; $m = '';
-	if ($date)
-		@list($y, $m, $d) = split('-', $date);
-	if (!is_numeric($y))
-		$y = strftime('%Y');
-	if (!is_numeric($m))
-		$m = strftime('%m');
+	if (gps('date')) {
+		@list($y, $m) = explode('-', gps('date'));
+		$y = intval($y) ? intval($y) : strftime('%Y');
+		$m = intval($m) ? intval($m) : strftime('%m');
+	}
+	else {
+		$ts = strtotime($date);
+		$y = strftime('%Y', $ts);
+		$m = strftime('%m', $ts);
+	}
 
-	# next and previous months
-	$prev_m = strftime('%Y-%m', strtotime('-1 month', mktime(0,0,0,$m,1,$y)));
-	$next_m = strftime('%Y-%m', strtotime('+1 month', mktime(0,0,0,$m,1,$y)));
+	# next and previous dates
+	if ($step == 'year') {
+		$prev_d = strftime('%Y', $prev_ts = strtotime('-1 year', mktime(0,0,0,$m,1,$y)));
+		$next_d = strftime('%Y', $next_ts = strtotime('+1 year', mktime(0,0,0,$m,1,$y)));
+	}
+	else {
+		$prev_d = strftime('%Y-%m', $prev_ts = strtotime('-1 month', mktime(0,0,0,$m,1,$y)));
+		$next_d = strftime('%Y-%m', $next_ts = strtotime('+1 month', mktime(0,0,0,$m,1,$y)));
+	}
 
-	# next link
-	$out[] = '<a rel="next" class="'.$nextclass.'" href="'.pagelinkurl(array(
-		'date' => $next_m,
-		's'    =>@$pretext['s'],
-		'c'    =>@$pretext['c'],
-		'q'    =>@$pretext['q'],
-	)).'">'.$next.'</a>';
-
-	# month name
-	$out[] = doTag(strftime('%B', mktime(0,0,0,$m,1,$y)), $labeltag, $class);
+	$out = array();
 
 	# prev link
 	$out[] = '<a rel="prev" class="'.$prevclass.'" href="'.pagelinkurl(array(
-		'date' => $prev_m,
+		'date' => $prev_d,
 		's'    =>@$pretext['s'],
 		'c'    =>@$pretext['c'],
 		'q'    =>@$pretext['q'],
-	)).'">'.$prev.'</a>';
+	)).'">'.strftime($prev, $prev_ts).'</a>';
+
+	# month name
+	$out[] = doTag(strftime($label, mktime(0,0,0,$m,1,$y)), $labeltag, $class);
+
+	# next link
+	$out[] = '<a rel="next" class="'.$nextclass.'" href="'.pagelinkurl(array(
+		'date' => $next_d,
+		's'    =>@$pretext['s'],
+		'c'    =>@$pretext['c'],
+		'q'    =>@$pretext['q'],
+	)).'">'.strftime($next, $next_ts).'</a>';
+
+	if ($reverse)
+		$out = array_reverse($out);
 
 	return doWrap($out, $wraptag, $break, $class);
 }
@@ -1939,6 +1958,7 @@ function zem_event_gTxt($what, $atts = array()) {
 		'recurring_label'         => 'Recurring event',
 		'repeat_n'                => 'Repeat this event every',
 		'repeat_to'               => 'Until',
+		'error_context'           => 'Context error: there is no <strong>{thing}</strong> here',
 	);
 
 	return strtr($lang[$what], $atts);
@@ -1947,7 +1967,7 @@ function zem_event_gTxt($what, $atts = array()) {
 /*
 --- PLUGIN METADATA ---
 Name: zem_event
-Version: 0.31
+Version: 0.32
 Type: 1
 Description: Event calendar
 Author: Alex Shiels
