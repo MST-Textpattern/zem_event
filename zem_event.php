@@ -464,15 +464,21 @@ function zem_event_description($atts) {
 	return zem_data_field(zem_event_thisevent(), $latts + $atts);
 }
 
-function zem_event_email($atts) {
+function zem_event_email($atts, $thing='') {
 	$latts = lAtts(array(
 		'type'    => 'email',
 		'field'   => 'email',
 		'wraptag' => '',
 		'class'   => __FUNCTION__,
 	),$atts, 0);
-
+	
+	if ($thing) {
+		$latts['linktext'] = parse($thing);
+		$latts['type'] = 'emaillink';
+	}
+	
 	return zem_data_field(zem_event_thisevent(), $latts + $atts);
+	
 }
 
 function zem_event_categories($atts) {
@@ -566,6 +572,8 @@ function zem_data_field(&$obj, $atts) {
 		$out = href($linktext, $out);
 	elseif ($type == 'email')
 		$out = eE($out);
+	elseif ($type == 'emaillink')
+		$out = href($linktext,'mailto:'.eE($out));
 
 	$pre = '';
 
@@ -1959,7 +1967,7 @@ function zem_event_gTxt($what, $atts = array()) {
 /*
 --- PLUGIN METADATA ---
 Name: zem_event
-Version: 0.33
+Version: 0.34
 Type: 1
 Description: Event calendar
 Author: Alex Shiels
