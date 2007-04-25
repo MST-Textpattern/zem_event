@@ -80,18 +80,6 @@ EOF;
 
 	}
 
-	// locations form
-	if (!safe_field('name', 'txp_form', "name = 'zem_event_locations'")) {
-			$form = <<<EOF
-australia = Australia
-canada = Canada
-france = France
-germany = Germany
-span = Spain
-EOF;
-		safe_insert('txp_form', "name = 'zem_event_locations', type = 'misc', Form = '".doSlash($form)."'");
-	}
-
 	// add finish date and time fields
    $cal = getThings('describe '.PFX.'zem_event_calendar');
    if (!in_array('finish_date',$cal))
@@ -114,7 +102,7 @@ EOF;
    if (!in_array('repeat_n',$cal))
       zem_alter('zem_event_calendar', 'add repeat_n int');
    if (!in_array('repeat_period',$cal))
-      zem_alter('zem_event_calendar', 'add repeat_period varchar(16)'); // day/week/month/year
+      zem_alter('zem_event_calendar', 'add repeat_period varchar(16)');
    if (!in_array('repeat_to',$cal))
       zem_alter('zem_event_calendar', 'add repeat_to date default null');
 
@@ -491,8 +479,6 @@ function zem_event_categories($atts) {
 	global $pretext;
 
 	$latts = lAtts(array(
-		'type'    => 'email',
-		'field'   => 'categories',
 		'wraptag' => '',
 		'class'   => __FUNCTION__,
 		'break'   => n,
@@ -726,6 +712,8 @@ function zem_article_event($atts, $thing=NULL) {
 		'limit'   => '',
 	),$atts));
 
+	assert_article();
+
 	if ($thing === NULL)
 		$thing = fetch_form($form);
 
@@ -773,9 +761,9 @@ function zem_event_calendar($atts) {
 		'class'       => __FUNCTION__,
 		'class_row_num' => 'number',
 		'class_row_day' => 'day',
-		'class_event' => '', // class used on td element for days with events
-		'class_empty' => '', // days with no events
-		'class_noday' => '', // spacer cells that aren't real days
+		'class_event' => '',
+		'class_empty' => '',
+		'class_noday' => '',
 		'form'        => 'zem_event_cal_entry',
 		'labeltag'    => 'h3',
 	),$atts));
@@ -951,9 +939,9 @@ function zem_event_mini_calendar($atts) {
 		'class'       => __FUNCTION__,
 		'class_row_num' => 'number',
 		'class_row_day' => 'day',
-		'class_event' => '', // class used on td element for days with events
-		'class_empty' => '', // days with no events
-		'class_noday' => '', // spacer cells that aren't real days
+		'class_event' => '',
+		'class_empty' => '',
+		'class_noday' => '',
 		'class_link'  => '',
 		'labeltag'    => 'h3',
 		'section'     => @$pretext['s'],
@@ -1074,7 +1062,7 @@ function zem_event_search_input($atts) {
 
 	$out[] = '<fieldset id="category">'.$fs_c.'</fieldset>';
 
-	$locs = zem_event_available_locations();
+	$locs = safe_column('distinct location as l', 'zem_event_calendar', '1=1 order by location asc');
 
 	$fs_l = '<legend>Location</legend>';
 	$fs_l .= '<input type="checkbox" name="all_locations" id="all_locations" value="1"'.(gps('all_locations') ? ' checked="checked"' : '').' />'.$sep
@@ -1675,7 +1663,11 @@ function zem_event_handler($event, $step) {
 			tr(
 				td(
 					n.graf('<label for="zem_event_location">'.zem_event_gTxt('location_label').'</label>'.br.
-						selectInput('zem_event_location', $available_locations, $location, true, '', 'zem_event_location')).
+						($available_locations
+							? selectInput('zem_event_location', $available_locations, $location, true, '', 'zem_event_location')
+							: fInput('text', 'zem_event_location', $location, 'edit', '', 24, '', 'zem_event_location')
+						)
+					).
 
 					n.graf('<label for="zem_event_location_url">'.zem_event_gTxt('map_label').'</label>'.br.
 					fInput('text', 'zem_event_location_url', $location_url, 'edit', '', '', 24, '', 'zem_event_location_url'))
@@ -1760,7 +1752,7 @@ $(\'input.zem_date_select\').datePicker();'
 
 function zem_event_available_locations() {
 
-	$form = fetch_form('zem_event_locations');
+	$form = @fetch_form('zem_event_locations');
 
 	// prepare form for use
 	$form = str_replace(array("\r\n", "\r"), "\n", $form);
@@ -1967,7 +1959,7 @@ function zem_event_gTxt($what, $atts = array()) {
 /*
 --- PLUGIN METADATA ---
 Name: zem_event
-Version: 0.32
+Version: 0.33
 Type: 1
 Description: Event calendar
 Author: Alex Shiels
