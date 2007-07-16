@@ -156,6 +156,12 @@ function zem_alter($table, $thing) {
 	return safe_query('alter ignore table '.safe_pfx($table).' '.$thing);
 }
 
+function zem_txp_ver($ver, $op='>=') {
+   global $prefs;
+
+   return version_compare($prefs['version'], $ver, $op);
+}
+
 function zem_strtotime($t, $now='') {
 	if (!trim($t)) return false;
 	if (!$now) $now = time();
@@ -478,7 +484,6 @@ function zem_event_email($atts, $thing='') {
 	}
 	
 	return zem_data_field(zem_event_thisevent(), $latts + $atts);
-	
 }
 
 function zem_event_categories($atts) {
@@ -625,6 +630,7 @@ function zem_event_list($atts, $thing=NULL) {
 		'labeltag' => '',
 		'limit'    => '',
 		'category' => (gps('c') ? gps('c') : @$pretext['c']),
+		'section'  => '',
 		'all_categories' => gps('all_categories'),
 		'location' => gps('location'),
 		'all_locations' => gps('all_locations'),
@@ -658,6 +664,11 @@ function zem_event_list($atts, $thing=NULL) {
 	$w = zem_event_timeq($date_from, $date_to);
 	if ($w)
 		$where .= (' and '.join(' and ', $w));
+
+	if ($section) {
+		$sections = do_list($section);
+		$where .= (" and textpattern.Section IN (".join(',', quote_list($sections)).")");
+	}
 
 	if ($location and !$all_locations) {
 		// location could be an array if it came from gps()
@@ -1906,9 +1917,17 @@ if (txpinterface === 'admin') {
 	zem_event_install();
 	register_callback('zem_event_handler', 'article');
 
-	add_privs('zem_event_cats', '1,2,3,4,5');
-	register_tab('content', 'zem_event_cats', zem_event_gTxt('event_categories'));
-	register_callback('zem_event_cat_tab', 'zem_event_cats');
+	if (zem_txp_ver('4.1.0')) {
+		# 4.1.x category type
+		include_element('include/txp_category');
+		register_category_type('event');
+	}
+	else {
+		# 4.0.x category tab code
+		add_privs('zem_event_cats', '1,2,3,4,5');
+		register_tab('content', 'zem_event_cats', zem_event_gTxt('event_categories'));
+		register_callback('zem_event_cat_tab', 'zem_event_cats');
+	}
 }
 
 if (txpinterface === 'public') {
@@ -1967,7 +1986,7 @@ function zem_event_gTxt($what, $atts = array()) {
 /*
 --- PLUGIN METADATA ---
 Name: zem_event
-Version: 0.34
+Version: 0.35
 Type: 1
 Description: Event calendar
 Author: Alex Shiels
