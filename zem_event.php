@@ -1986,7 +1986,7 @@ function zem_event_gTxt($what, $atts = array()) {
 /*
 --- PLUGIN METADATA ---
 Name: zem_event
-Version: 0.35
+Version: 0.3.5
 Type: 1
 Description: Event calendar
 Author: Alex Shiels
