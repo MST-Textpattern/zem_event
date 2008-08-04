@@ -20,8 +20,8 @@ define('ZEM_MAX_REPEAT_EVENTS', 100);
 
 
 function zem_event_install() {
-	if (!getThings("show tables like '".PFX."zem_event_calendar'"))
-		safe_query("create table if not exists ".PFX."zem_event_calendar (
+	if (!getThings("show tables like '".safe_pfx('zem_event_calendar')."'"))
+		safe_query("create table if not exists ".safe_pfx('zem_event_calendar')." (
 
 			id bigint auto_increment not null primary key,
 			article_id bigint not null,
@@ -81,7 +81,7 @@ EOF;
 	}
 
 	// add finish date and time fields
-   $cal = getThings('describe '.PFX.'zem_event_calendar');
+   $cal = getThings('describe '.safe_pfx('zem_event_calendar'));
    if (!in_array('finish_date',$cal))
       zem_alter('zem_event_calendar', 'add finish_date date default null');
    if (!in_array('finish_time',$cal))
@@ -112,16 +112,16 @@ EOF;
 	}
 
 	// event m->m category
-	if (!getThings("show tables like '".PFX."zem_event_category'"))
-		safe_query("create table if not exists ".PFX."zem_event_category (
+	if (!getThings("show tables like '".safe_pfx('zem_event_category')."'"))
+		safe_query("create table if not exists ".safe_pfx('zem_event_category')." (
 				k1 int not null,
 				k2 int not null,
 				PRIMARY KEY (k1,k2)
 			)"
 		);
 
-	if (!getThings("show tables like '".PFX."zem_event_date'")) {
-		safe_query("create table if not exists ".PFX."zem_event_date (
+	if (!getThings("show tables like '".safe_pfx('zem_event_date')."'")) {
+		safe_query("create table if not exists ".safe_pfx('zem_event_date')." (
 				event_id bigint not null,
 				event_date date not null,
 				event_time time default null,
@@ -599,13 +599,13 @@ function zem_event_timeq($date_from, $date_to) {
 
 	$w = array();
 	if ($d_from) {
-		$w[] = "(zem_event_date.event_date >= '".doSlash(zem_sqldate($d_from))."'"
-			." or zem_event_date.finish_date >= '".doSlash(zem_sqldate($d_from))."')";
+		$w[] = "(".safe_pfx('zem_event_date').".event_date >= '".doSlash(zem_sqldate($d_from))."'"
+			." or ".safe_pfx('zem_event_date').".finish_date >= '".doSlash(zem_sqldate($d_from))."')";
 	}
 
 	if ($d_to) {
-		$w[] = "(zem_event_date.event_date <= '".doSlash(zem_sqldate($d_to))."'"
-			." or zem_event_date.finish_date <= '".doSlash(zem_sqldate($d_to))."')";
+		$w[] = "(".safe_pfx('zem_event_date').".event_date <= '".doSlash(zem_sqldate($d_to))."'"
+			." or ".safe_pfx('zem_event_date').".finish_date <= '".doSlash(zem_sqldate($d_to))."')";
 	}
 
 	return $w;
@@ -622,7 +622,7 @@ function zem_event_list($atts, $thing=NULL) {
 		'break'   => '',
 		'breakclass' => '',
 		'form'    => 'zem_event_display',
-		'sort'    => 'zem_event_date.event_date asc, zem_event_date.event_time asc',
+		'sort'    => safe_pfx('zem_event_date').'.event_date asc, '.safe_pfx('zem_event_date').'.event_time asc',
 		'date_from' => (gps('date_from') ? gps('date_from') : 'today'),
 		'date_to'   => (gps('date_to') ? gps('date_to') : ''),
 		'date'    => gps('date'),
@@ -640,7 +640,7 @@ function zem_event_list($atts, $thing=NULL) {
 	if ($thing === NULL)
 		$thing = fetch_form($form);
 
-	$where = 'zem_event_calendar.id=zem_event_date.event_id and zem_event_calendar.article_id = textpattern.ID and textpattern.Status >= 4 and textpattern.Posted <= now()';
+	$where = safe_pfx('zem_event_calendar').'.id='.safe_pfx('zem_event_date').'.event_id and '.safe_pfx('zem_event_calendar').'.article_id = '.safe_pfx('textpattern').'.ID and '.safe_pfx('textpattern').'.Status >= 4 and '.safe_pfx('textpattern').'.Posted <= now()';
 
 	if ($date) {
 		@list($y, $m, $d) = explode('-', $date);
@@ -691,15 +691,15 @@ function zem_event_list($atts, $thing=NULL) {
 		$cats_id = safe_column('id', 'txp_category', "type='event' and name IN (".join(',', quote_list($cats)).")");
 		if (!$cats_id)
 			$cats_id = array(0);
-		$where = "zem_event_calendar.id=zem_event_category.k1 and zem_event_category.k2 IN (".join(',', quote_list($cats_id)).") and ".$where;
-		$grand_total = safe_count('zem_event_calendar, zem_event_date, textpattern, zem_event_category', $where.' group by zem_event_calendar.id order by '.$sort, $debug);
+		$where = safe_pfx('zem_event_calendar').".id=".safe_pfx('zem_event_category').".k1 and ".safe_pfx('zem_event_category').".k2 IN (".join(',', quote_list($cats_id)).") and ".$where;
+		$grand_total = safe_count('zem_event_calendar,zem_event_date,textpattern,zem_event_category', $where.' group by '.safe_pfx('zem_event_calendar').'.id order by '.$sort, $debug);
 		$lim = zem_event_paginate($limit, $grand_total);
-		$rs = safe_rows_start('zem_event_calendar.*, zem_event_date.*, textpattern.*, unix_timestamp(Posted) as uPosted', 'zem_event_calendar, zem_event_date, textpattern, zem_event_category', $where.' group by zem_event_calendar.id order by '.$sort.$lim, $debug);
+		$rs = safe_rows_start(safe_pfx('zem_event_calendar').'.*, '.safe_pfx('zem_event_date').'.*, '.safe_pfx('textpattern').'.*, unix_timestamp(Posted) as uPosted', 'zem_event_calendar,zem_event_date,textpattern,zem_event_category', $where.' group by '.safe_pfx('zem_event_calendar').'.id order by '.$sort.$lim, $debug);
 	}
 	else {
-		$grand_total = safe_count('zem_event_calendar, zem_event_date, textpattern', $where.' order by '.$sort, $debug);
+		$grand_total = safe_count('zem_event_calendar,zem_event_date,textpattern', $where.' order by '.$sort, $debug);
 		$lim = zem_event_paginate($limit, $grand_total);
-		$rs = safe_rows_start('*, unix_timestamp(Posted) as uPosted', 'zem_event_calendar, zem_event_date, textpattern', $where.' order by '.$sort.$lim, $debug);
+		$rs = safe_rows_start('*, unix_timestamp(Posted) as uPosted', 'zem_event_calendar,zem_event_date,textpattern', $where.' order by '.$sort.$lim, $debug);
 	}
 
 	$out = array();
@@ -736,13 +736,13 @@ function zem_article_event($atts, $thing=NULL) {
 	if ($thing === NULL)
 		$thing = fetch_form($form);
 
-	$where = "article_id='".doSlash($thisarticle['thisid'])."' and zem_event_calendar.id=zem_event_date.event_id";
+	$where = "article_id='".doSlash($thisarticle['thisid'])."' and ".safe_pfx('zem_event_calendar').".id=".safe_pfx('zem_event_date').".event_id";
 
 	$lim = '';
 	if (intval($limit))
 		$lim = ' limit '.intval($limit);
 
-	$rs = safe_rows_start('*', 'zem_event_calendar, zem_event_date', $where.$lim);
+	$rs = safe_rows_start('*', 'zem_event_calendar,zem_event_date', $where.$lim);
 
 	$out = array();
 	while ($row = nextRow($rs)) {
@@ -1003,7 +1003,7 @@ function zem_event_mini_calendar($atts) {
 
 	$days = array();
 	$w = zem_event_timeq("$y-$m-01", "$y-$m-$numdays");
-	$rs = safe_rows('zem_event_date.*', 'zem_event_calendar,zem_event_date,textpattern', 'zem_event_calendar.id=zem_event_date.event_id and zem_event_calendar.article_id = textpattern.ID and textpattern.Status >= 4 and textpattern.Posted <= now()');
+	$rs = safe_rows(safe_pfx('zem_event_date').'.*', 'zem_event_calendar,zem_event_date,textpattern', safe_pfx('zem_event_calendar').'.id='.safe_pfx('zem_event_date').'.event_id and '.safe_pfx('zem_event_calendar').'.article_id = '.safe_pfx('textpattern').'.ID and '.safe_pfx('textpattern').'.Status >= 4 and '.safe_pfx('textpattern').'.Posted <= now()');
 	foreach ($rs as $r) {
 		$days[$r['event_date']] = true;
 	}
